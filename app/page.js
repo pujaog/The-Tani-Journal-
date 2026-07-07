@@ -6,11 +6,11 @@ import {
   Calendar, Heart, ChevronDown, Sparkles, Feather, Coffee, Moon,
   Sun, Trees, Loader2, Check, Users, Lock, Globe, LogOut, User as UserIcon,
   Mail, KeyRound, ArrowRight, Eye, MessageCircle, Flag, Send, UserPlus, UserCheck,
-  Video, Film, ArrowLeft
+  Video, Film, ArrowLeft, HardDrive, Cloud, CloudOff, RefreshCw
 } from 'lucide-react'
 import {
   auth, onAuthStateChanged, signInWithGoogle, signInEmail, signUpEmail, signOut, authedFetch,
-  completeRedirectSignIn
+  completeRedirectSignIn, connectDrive, disconnectDrive, isDriveConnected, getDriveToken
 } from '@/lib/firebase'
 
 const THEMES = [
@@ -700,6 +700,9 @@ function App() {
   const [styleOpen, setStyleOpen] = useState(false)
   const [viewingAuthor, setViewingAuthor] = useState(null)
   const [presence, setPresence] = useState({})
+  const [driveConnected, setDriveConnected] = useState(false)
+  const [driveSyncing, setDriveSyncing] = useState(false)
+  const [driveMsg, setDriveMsg] = useState('')
 
   useEffect(() => {
     const t = localStorage.getItem('tani-theme'); if (t) setTheme(t)
@@ -731,6 +734,53 @@ function App() {
     const iv = setInterval(beat, 25000)
     return () => clearInterval(iv)
   }, [authUser])
+
+  // Drive connection state
+  useEffect(() => {
+    if (!authUser) { setDriveConnected(false); return }
+    setDriveConnected(isDriveConnected())
+    const iv = setInterval(() => setDriveConnected(isDriveConnected()), 10000)
+    return () => clearInterval(iv)
+  }, [authUser])
+
+  const doConnectDrive = async () => {
+    setDriveMsg('')
+    try {
+      await connectDrive()
+      setDriveConnected(isDriveConnected())
+      setDriveMsg('Google Drive connected!')
+      setTimeout(() => setDriveMsg(''), 3000)
+    } catch (e) {
+      console.error(e)
+      setDriveMsg('Drive connect failed: ' + (e?.message || 'unknown'))
+      setTimeout(() => setDriveMsg(''), 5000)
+    }
+  }
+  const doDisconnectDrive = () => {
+    disconnectDrive()
+    setDriveConnected(false)
+    setDriveMsg('Drive disconnected.')
+    setTimeout(() => setDriveMsg(''), 2500)
+  }
+  const doSyncAllToDrive = async () => {
+    if (!isDriveConnected()) return doConnectDrive()
+    setDriveSyncing(true); setDriveMsg('')
+    try {
+      const r = await authedFetch('/api/drive/sync-all', { method: 'POST' })
+      const j = await r.json()
+      if (r.ok) {
+        setDriveMsg(`Synced ${j.syncedCount}/${j.total} entries to Drive`)
+      } else if (r.status === 401) {
+        // Token expired - disconnect + reprompt
+        disconnectDrive(); setDriveConnected(false)
+        setDriveMsg('Drive token expired \u2014 tap Connect Drive to refresh')
+      } else {
+        setDriveMsg('Sync failed: ' + (j.error || 'unknown'))
+      }
+      setTimeout(() => setDriveMsg(''), 5000)
+    } catch (e) { setDriveMsg('Sync failed'); setTimeout(() => setDriveMsg(''), 3000) }
+    finally { setDriveSyncing(false) }
+  }
 
   const fetchPosts = useCallback(async (which) => {
     if (!authUser) return
@@ -764,14 +814,24 @@ function App() {
   }, [posts, authUser])
 
   const savePost = async (data) => {
+    let savedPost = null
     if (editing) {
       const r = await authedFetch(`/api/posts/${editing.id}`, { method: 'PUT', body: JSON.stringify(data) })
       const j = await r.json()
-      if (j.post) setPosts(prev => prev.map(p => p.id === j.post.id ? j.post : p))
+      if (j.post) { savedPost = j.post; setPosts(prev => prev.map(p => p.id === j.post.id ? j.post : p)) }
       setEditing(null)
     } else {
-      await authedFetch('/api/posts', { method: 'POST', body: JSON.stringify(data) })
+      const r = await authedFetch('/api/posts', { method: 'POST', body: JSON.stringify(data) })
+      const j = await r.json()
+      savedPost = j.post
       setTab('mine'); fetchPosts('mine')
+    }
+    // Auto-sync to Drive if connected
+    if (savedPost && isDriveConnected()) {
+      authedFetch(`/api/drive/sync/${savedPost.id}`, { method: 'POST' })
+        .then(r => r.ok ? setDriveMsg('Saved to Drive \u2713') : setDriveMsg('Drive sync failed'))
+        .then(() => setTimeout(() => setDriveMsg(''), 2500))
+        .catch(() => {})
     }
   }
   const deletePost = async (p) => {
@@ -831,6 +891,11 @@ function App() {
             </div>
           </button>
           <div className="flex items-center gap-1">
+            {driveConnected && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }} title="Google Drive connected — journal is being backed up as markdown">
+                <Cloud className="w-3 h-3" /> Drive
+              </span>
+            )}
             <button onClick={() => setStyleOpen(true)} className="journal-btn-ghost inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs"><Palette className="w-3.5 h-3.5" /><span className="hidden sm:inline">Style</span></button>
             <button onClick={() => { setEditing(null); setEditorOpen(true) }} className="journal-btn-primary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium"><Plus className="w-3.5 h-3.5" /> New entry</button>
             <div className="relative">
@@ -847,6 +912,22 @@ function App() {
                     </div>
                     <button onClick={() => { setMenuOpen(false); setViewingAuthor(authUser.uid) }} className="w-full text-left px-3 py-2 text-sm hover:bg-black/5 flex items-center gap-2" style={{ color: '#1a1a1a' }}><UserIcon className="w-3.5 h-3.5" /> My public profile</button>
                     <button onClick={() => { setMenuOpen(false); setProfileOpen(true) }} className="w-full text-left px-3 py-2 text-sm hover:bg-black/5 flex items-center gap-2" style={{ color: '#1a1a1a' }}><Pencil className="w-3.5 h-3.5" /> Edit profile</button>
+                    <div className="h-px" style={{ background: 'rgba(128,128,128,0.15)' }} />
+                    {driveConnected ? (
+                      <>
+                        <button onClick={() => { setMenuOpen(false); doSyncAllToDrive() }} disabled={driveSyncing} className="w-full text-left px-3 py-2 text-sm hover:bg-black/5 flex items-center gap-2 disabled:opacity-50" style={{ color: '#1a1a1a' }}>
+                          {driveSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Sync all to Drive
+                        </button>
+                        <button onClick={() => { setMenuOpen(false); doDisconnectDrive() }} className="w-full text-left px-3 py-2 text-sm hover:bg-black/5 flex items-center gap-2" style={{ color: '#1a1a1a' }}>
+                          <CloudOff className="w-3.5 h-3.5" /> Disconnect Drive
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => { setMenuOpen(false); doConnectDrive() }} className="w-full text-left px-3 py-2 text-sm hover:bg-black/5 flex items-center gap-2" style={{ color: '#1a1a1a' }}>
+                        <Cloud className="w-3.5 h-3.5" /> Connect Google Drive
+                      </button>
+                    )}
+                    <div className="h-px" style={{ background: 'rgba(128,128,128,0.15)' }} />
                     <button onClick={() => { setMenuOpen(false); signOut() }} className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"><LogOut className="w-3.5 h-3.5" /> Sign out</button>
                   </div>
                 </>
@@ -928,6 +1009,12 @@ function App() {
       <button onClick={() => { setEditing(null); setEditorOpen(true) }} className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg journal-btn-primary flex items-center justify-center z-20">
         <Plus className="w-6 h-6" />
       </button>
+
+      {driveMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full text-sm font-medium shadow-lg journal-card border inline-flex items-center gap-2 fade-up" style={{ maxWidth: '90vw' }}>
+          <Cloud className="w-4 h-4" /> {driveMsg}
+        </div>
+      )}
     </div>
   )
 }

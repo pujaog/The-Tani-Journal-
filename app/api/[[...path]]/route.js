@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 import { v4 as uuidv4 } from 'uuid'
 import { verifyIdTokenFromRequest } from '@/lib/auth-server'
+import {
+  findOrCreateFolder, upsertPostFile, verifyDriveToken,
+} from '@/lib/drive'
 
 const MONGO_URL = process.env.MONGO_URL
 const DB_NAME = process.env.DB_NAME || 'tani_journal'
@@ -289,6 +292,8 @@ async function handle(request, ctx) {
 
       // /posts/:id/comments
       if (sub === 'comments') {
+        // For POST, require auth first (before revealing whether post exists)
+        if (method === 'POST' && !authUser) return json({ error: 'Unauthorized' }, 401)
         const p = await posts.findOne({ id })
         if (!p) return json({ error: 'Not found' }, 404)
         if (p.visibility !== 'public' && (!authUser || authUser.uid !== p.authorUid)) {
@@ -402,6 +407,61 @@ async function handle(request, ctx) {
       const body = await readBody(request)
       if (!body.dataUrl) return json({ error: 'dataUrl required' }, 400)
       return json({ url: body.dataUrl })
+    }
+
+    // -------- Drive integration --------
+    // POST /drive/verify - client sends {accessToken}, we ping Drive and return ok
+    if (path === '/drive/verify' && method === 'POST') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const body = await readBody(request)
+      const token = body.accessToken
+      if (!token) return json({ error: 'accessToken required' }, 400)
+      const ok = await verifyDriveToken(token)
+      if (!ok) return json({ error: 'Invalid or expired Drive token' }, 401)
+      return json({ ok: true })
+    }
+
+    // POST /drive/sync-all - sync all of my posts (private + public)
+    if (path === '/drive/sync-all' && method === 'POST') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const token = request.headers.get('x-drive-token') || (await readBody(request)).accessToken
+      if (!token) return json({ error: 'Drive token required (X-Drive-Token header)' }, 400)
+      try {
+        const folderId = await findOrCreateFolder(token)
+        const mine = await posts.find({ authorUid: authUser.uid }).sort({ createdAt: 1 }).toArray()
+        const results = []
+        for (const p of mine) {
+          try {
+            const r = await upsertPostFile(token, folderId, p)
+            results.push({ id: p.id, ...r })
+          } catch (e) {
+            results.push({ id: p.id, error: String(e?.message || e) })
+          }
+        }
+        return json({ ok: true, folderId, syncedCount: results.filter(r => !r.error).length, total: mine.length, results })
+      } catch (err) {
+        console.error('Drive sync-all failed:', err)
+        const status = err?.status === 401 ? 401 : 500
+        return json({ error: 'Drive sync failed', detail: String(err?.message || err) }, status)
+      }
+    }
+
+    // POST /drive/sync/:postId - sync one post (used on create/update)
+    if (segs[0] === 'drive' && segs[1] === 'sync' && segs[2] && method === 'POST') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const token = request.headers.get('x-drive-token') || (await readBody(request)).accessToken
+      if (!token) return json({ error: 'Drive token required' }, 400)
+      const p = await posts.findOne({ id: segs[2] })
+      if (!p) return json({ error: 'Not found' }, 404)
+      if (p.authorUid !== authUser.uid) return json({ error: 'Forbidden' }, 403)
+      try {
+        const folderId = await findOrCreateFolder(token)
+        const r = await upsertPostFile(token, folderId, p)
+        return json({ ok: true, ...r })
+      } catch (err) {
+        const status = err?.status === 401 ? 401 : 500
+        return json({ error: 'Drive sync failed', detail: String(err?.message || err) }, status)
+      }
     }
 
     return json({ error: 'Not found', path, method }, 404)
