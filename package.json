@@ -8,8 +8,8 @@
         "dev:webpack": "next dev --hostname 0.0.0.0 --port 3000",
         "build": "next build",
         "start": "next start",
-        "test:backend": "python3 backend_test.py",
-        "test:e2e": "python3 tests/e2e_test.py",
+        "test:backend": "/app/.venv/bin/python /app/backend_test.py",
+        "test:e2e": "/app/.venv/bin/python /app/tests/e2e_test.py",
         "test": "yarn test:backend && yarn test:e2e"
     },
     "dependencies": {
