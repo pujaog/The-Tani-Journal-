@@ -133,13 +133,16 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
         <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 items-center">
           <div className="lg:col-span-3 fade-up">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] uppercase tracking-widest journal-chip mb-6">
-              <Sparkles className="w-3 h-3" /> A quieter place to write
+              <Sparkles className="w-3 h-3" /> A quiet place to write
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl leading-[1.05] font-semibold mb-6 tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
               Your story,<br /><em className="italic journal-muted">beautifully</em> kept.
             </h1>
             <p className="journal-muted text-lg sm:text-xl max-w-xl mb-8 leading-relaxed">
               A media-rich journal that respects your moments. Write with intention, add the photograph, choose the mood — and let a beautiful timeline hold it all.
+            </p>
+            <p className="journal-muted text-lg sm:text-xl max-w-xl mb-10 leading-relaxed font-semibold">
+              Write what you cannot say aloud.
             </p>
             <div className="flex flex-wrap items-center gap-3 mb-10">
               <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-medium">
@@ -321,7 +324,7 @@ function SignInScreen({ onBack }) {
             <BookOpen className="w-6 h-6" style={{ color: 'var(--bg-invert, #fff)', mixBlendMode: 'difference' }} />
           </div>
           <h1 className="text-4xl font-semibold mb-2" style={{ fontFamily: 'Fraunces, serif' }}>The Tani Journal</h1>
-          <p className="journal-muted text-sm">Your story, beautifully kept.</p>
+          <p className="journal-muted text-sm">A quiet place to write your Mésang (Imagination).</p>
         </div>
         <div className="journal-card border rounded-2xl p-6 sm:p-8">
           <div className="flex gap-1 p-1 rounded-lg mb-6" style={{ background: 'rgba(128,128,128,0.08)' }}>
