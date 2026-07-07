@@ -8,7 +8,8 @@ import {
   Mail, KeyRound, ArrowRight
 } from 'lucide-react'
 import {
-  auth, onAuthStateChanged, signInWithGoogle, signInEmail, signUpEmail, signOut, authedFetch
+  auth, onAuthStateChanged, signInWithGoogle, signInEmail, signUpEmail, signOut, authedFetch,
+  completeRedirectSignIn
 } from '@/lib/firebase'
 
 const THEMES = [
@@ -573,6 +574,8 @@ function App() {
 
   // Auth listener
   useEffect(() => {
+    // Complete any pending Google redirect sign-in
+    completeRedirectSignIn()
     const unsub = onAuthStateChanged(auth, async (u) => {
       setAuthUser(u || null)
       if (u) {
