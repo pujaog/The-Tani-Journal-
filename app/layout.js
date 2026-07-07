@@ -1,5 +1,4 @@
 import './globals.css'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata = {
   title: 'The Tani Journal — Your Story, Beautifully Kept',
@@ -19,7 +18,6 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         {children}
-        <SpeedInsights />
       </body>
     </html>
   )
