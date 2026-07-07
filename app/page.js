@@ -100,8 +100,174 @@ function Avatar({ url, name, size = 32, online, onClick }) {
   )
 }
 
+// ---------- Landing Page ----------
+function LandingPage({ onGetStarted }) {
+  return (
+    <div className="min-h-screen fade-up">
+      {/* Nav */}
+      <nav className="sticky top-0 z-30 backdrop-blur-md" style={{ background: 'color-mix(in srgb, currentColor 4%, transparent)' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'currentColor' }}>
+              <BookOpen className="w-4 h-4" style={{ color: 'var(--bg-invert, #fff)', mixBlendMode: 'difference' }} />
+            </div>
+            <div>
+              <div className="text-base font-semibold leading-tight" style={{ fontFamily: 'Fraunces, serif' }}>The Tani Journal</div>
+              <div className="text-[11px] journal-muted leading-tight">Your story, beautifully kept</div>
+            </div>
+          </div>
+          <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium">
+            Sign in <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-16 sm:pb-24">
+        <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 items-center">
+          <div className="lg:col-span-3 fade-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] uppercase tracking-widest journal-chip mb-6">
+              <Sparkles className="w-3 h-3" /> A quieter place to write
+            </div>
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl leading-[1.05] font-semibold mb-6 tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
+              Your story,<br /><em className="italic journal-muted">beautifully</em> kept.
+            </h1>
+            <p className="journal-muted text-lg sm:text-xl max-w-xl mb-8 leading-relaxed">
+              A media-rich journal that respects your moments. Write with intention, add the photograph, choose the mood — and let a beautiful timeline hold it all.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 mb-10">
+              <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-medium">
+                <Feather className="w-4 h-4" /> Start your journal
+              </button>
+              <button onClick={onGetStarted} className="journal-chip inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm border">
+                <UserIcon className="w-4 h-4" /> I already have one
+              </button>
+            </div>
+            <div className="flex items-center gap-6 text-xs journal-muted">
+              <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Private by default</div>
+              <div className="flex items-center gap-1.5"><Cloud className="w-3.5 h-3.5" /> Optional Drive backup</div>
+              <div className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" /> Free forever</div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 relative">
+            {/* Hero image stack */}
+            <div className="relative aspect-[3/4] max-w-md mx-auto">
+              <div className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl rotate-[2deg]" style={{ transform: 'rotate(3deg)' }}>
+                <img src="https://images.unsplash.com/photo-1569360556894-15dca0c6ff1a" alt="" className="w-full h-full object-cover" />
+              </div>
+              <div className="absolute -bottom-6 -left-6 w-40 h-52 rounded-2xl overflow-hidden shadow-xl border-4 rotate-[-6deg]" style={{ borderColor: 'var(--card, #fff)' }}>
+                <img src="https://images.pexels.com/photos/17301678/pexels-photo-17301678.jpeg" alt="" className="w-full h-full object-cover" />
+              </div>
+              <div className="absolute -top-4 -right-4 w-32 h-32 rounded-2xl overflow-hidden shadow-xl border-4 rotate-[8deg]" style={{ borderColor: 'var(--card, #fff)' }}>
+                <img src="https://images.pexels.com/photos/15558300/pexels-photo-15558300.jpeg" alt="" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <div className="text-xs uppercase tracking-[0.2em] journal-muted font-medium mb-3">Everything you need</div>
+          <h2 className="text-3xl sm:text-5xl font-semibold leading-tight" style={{ fontFamily: 'Fraunces, serif' }}>
+            A journal that feels made for you.
+          </h2>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { icon: Feather, title: 'Rich editor', body: 'Title, mood chips, free-form writing, and image or video attachments — with 16:9 or 3:4 aspect ratios you choose.' },
+            { icon: Palette, title: 'Style engine', body: '4 themes × 4 typefaces. Paper, Midnight, Sepia, or Forest. Fraunces, Inter, Playfair, or JetBrains — flip a switch, feel a mood.' },
+            { icon: Users, title: 'Public or private', body: 'Keep entries just for you, or share them to the Community feed. Follow writers whose voice you love.' },
+            { icon: Cloud, title: 'Google Drive backup', body: 'Optional. Every entry mirrored as a clean markdown file in a folder in your Drive. Your words, portable forever.' },
+            { icon: MessageCircle, title: 'Warm conversation', body: 'Likes, view counts, and threaded comments — with blue-dot presence so you know who is around.' },
+            { icon: Shield, title: 'Kind by design', body: 'Report / flag inappropriate content. Owner-only edits and deletes. Privacy is the default, always.' },
+          ].map(({ icon: Icon, title, body }) => (
+            <div key={title} className="journal-card border rounded-2xl p-6 fade-up">
+              <div className="w-10 h-10 rounded-xl inline-flex items-center justify-center mb-4" style={{ background: 'rgba(128,128,128,0.12)' }}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: 'Fraunces, serif' }}>{title}</h3>
+              <p className="journal-muted text-sm leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Themes preview */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+          <div>
+            <div className="text-xs uppercase tracking-[0.2em] journal-muted font-medium mb-3">Feel the mood</div>
+            <h2 className="text-3xl sm:text-5xl font-semibold leading-tight mb-4" style={{ fontFamily: 'Fraunces, serif' }}>Four backgrounds. Four typefaces. Yours to switch.</h2>
+            <p className="journal-muted text-base leading-relaxed mb-6">
+              Some mornings feel like <b>Paper</b>. Some evenings feel like <b>Midnight</b>. A slow Sunday deserves <b>Sepia</b>. A camping trip lives in <b>Forest</b>. Change your journal to match — and change the story it tells.
+            </p>
+            <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium">
+              Try it free <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { name: 'Paper',    swatch: 'linear-gradient(135deg, #faf7f2 0%, #efe8d8 100%)', text: '#2a2622', icon: Sun,   sub: 'Warm & bright' },
+              { name: 'Midnight', swatch: 'linear-gradient(135deg, #1a1b2e 0%, #06060d 100%)', text: '#e8e6f0', icon: Moon,  sub: 'For late nights' },
+              { name: 'Sepia',    swatch: 'linear-gradient(135deg, #f4ecd8 0%, #d9c9a3 100%)', text: '#3d2f1f', icon: Coffee, sub: 'Slow, unhurried' },
+              { name: 'Forest',   swatch: 'linear-gradient(135deg, #0f2620 0%, #1a4033 100%)', text: '#dce8de', icon: Trees, sub: 'Grounded, wild' },
+            ].map(t => {
+              const Icon = t.icon
+              return (
+                <div key={t.name} className="rounded-2xl p-5 border shadow-sm" style={{ background: t.swatch, color: t.text, borderColor: 'rgba(0,0,0,0.08)' }}>
+                  <Icon className="w-5 h-5 mb-6" />
+                  <div className="text-lg font-semibold" style={{ fontFamily: 'Fraunces, serif' }}>{t.name}</div>
+                  <div className="text-xs opacity-70">{t.sub}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Quote / testimonial-style */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center">
+        <div className="journal-card border rounded-3xl p-8 sm:p-14">
+          <div className="text-5xl mb-4 opacity-30">&ldquo;</div>
+          <p className="text-xl sm:text-3xl leading-relaxed mb-6" style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic' }}>
+            The life of every man is a diary in which he means to write one story, and writes another.
+          </p>
+          <div className="text-xs uppercase tracking-widest journal-muted">— J.M. Barrie</div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-28 text-center">
+        <h2 className="text-4xl sm:text-6xl font-semibold leading-tight mb-6" style={{ fontFamily: 'Fraunces, serif' }}>
+          Write the day.<br />Keep the year.
+        </h2>
+        <p className="journal-muted text-lg mb-10 max-w-xl mx-auto">
+          Free forever. Private by default. Beautiful on your phone and your desktop. Start now — your first entry is one moment away.
+        </p>
+        <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-medium">
+          <Feather className="w-5 h-5" /> Begin your journal
+        </button>
+      </section>
+
+      <footer className="max-w-6xl mx-auto px-4 sm:px-6 py-10 border-t text-center" style={{ borderColor: 'rgba(128,128,128,0.15)' }}>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs journal-muted">
+          <div className="flex items-center gap-1.5"><Feather className="w-3 h-3" /> Written with intention · The Tani Journal</div>
+          <div className="flex items-center gap-4">
+            <button onClick={onGetStarted} className="hover:underline">Sign in</button>
+            <span>·</span>
+            <span>© {new Date().getFullYear()}</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
 // ---------- Sign In ----------
-function SignInScreen() {
+function SignInScreen({ onBack }) {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -139,6 +305,11 @@ function SignInScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md fade-up">
+        {onBack && (
+          <button onClick={onBack} className="journal-btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs mb-4">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to home
+          </button>
+        )}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'currentColor' }}>
             <BookOpen className="w-6 h-6" style={{ color: 'var(--bg-invert, #fff)', mixBlendMode: 'difference' }} />
@@ -815,6 +986,7 @@ function App() {
   const [driveConnected, setDriveConnected] = useState(false)
   const [driveSyncing, setDriveSyncing] = useState(false)
   const [driveMsg, setDriveMsg] = useState('')
+  const [showSignIn, setShowSignIn] = useState(false)
   const [notifs, setNotifs] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -1022,7 +1194,11 @@ function App() {
   const groupKeys = Object.keys(groups)
 
   if (authUser === undefined) return <div className="min-h-screen flex items-center justify-center journal-muted"><Loader2 className="w-5 h-5 animate-spin" /></div>
-  if (!authUser) return <SignInScreen />
+  if (!authUser) {
+    return showSignIn
+      ? <SignInScreen onBack={() => setShowSignIn(false)} />
+      : <LandingPage onGetStarted={() => setShowSignIn(true)} />
+  }
 
   return (
     <div className="min-h-screen">
