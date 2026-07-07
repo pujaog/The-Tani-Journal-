@@ -127,6 +127,11 @@ html[data-font='display'] body { font-family: 'Playfair Display', Georgia, serif
 /* Aspect ratio containers */
 .aspect-16-9 { aspect-ratio: 16 / 9; }
 .aspect-3-4 { aspect-ratio: 3 / 4; }
+.aspect-1-1 { aspect-ratio: 1 / 1; }
+.aspect-4-5 { aspect-ratio: 4 / 5; }
+.aspect-9-16 { aspect-ratio: 9 / 16; }
+.aspect-4-3 { aspect-ratio: 4 / 3; }
+.aspect-21-9 { aspect-ratio: 21 / 9; }
 
 /* Fade in animation */
 @keyframes fadeUp {

@@ -101,7 +101,7 @@ function Avatar({ url, name, size = 32, online, onClick }) {
 }
 
 // ---------- Landing Page ----------
-function LandingPage({ onGetStarted }) {
+function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
   return (
     <div className="min-h-screen fade-up">
       {/* Nav */}
@@ -116,9 +116,15 @@ function LandingPage({ onGetStarted }) {
               <div className="text-[11px] journal-muted leading-tight">Your story, beautifully kept</div>
             </div>
           </div>
-          <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium">
-            Sign in <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setIsDayMode(!isDayMode)} className="journal-chip inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs border">
+              {isDayMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              {isDayMode ? 'Day' : 'Night'}
+            </button>
+            <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium">
+              Sign in <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -992,13 +998,25 @@ function App() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [isAdminUser, setIsAdminUser] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
+  const [isDayMode, setIsDayMode] = useState(true)
 
   useEffect(() => {
     const t = localStorage.getItem('tani-theme'); if (t) setTheme(t)
     const f = localStorage.getItem('tani-font'); if (f) setFont(f)
+    const d = localStorage.getItem('tani-daymode'); if (d !== null) setIsDayMode(JSON.parse(d))
   }, [])
-  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('tani-theme', theme) }, [theme])
+  useEffect(() => {
+    // Apply theme based on auth state and isDayMode
+    if (authUser) {
+      document.documentElement.setAttribute('data-theme', theme)
+    } else {
+      // On landing page, apply theme based on isDayMode
+      document.documentElement.setAttribute('data-theme', isDayMode ? 'paper' : 'midnight')
+    }
+    localStorage.setItem('tani-theme', theme)
+  }, [theme, authUser, isDayMode])
   useEffect(() => { document.documentElement.setAttribute('data-font', font); localStorage.setItem('tani-font', font) }, [font])
+  useEffect(() => { localStorage.setItem('tani-daymode', JSON.stringify(isDayMode)) }, [isDayMode])
 
   useEffect(() => {
     completeRedirectSignIn()
@@ -1197,7 +1215,7 @@ function App() {
   if (!authUser) {
     return showSignIn
       ? <SignInScreen onBack={() => setShowSignIn(false)} />
-      : <LandingPage onGetStarted={() => setShowSignIn(true)} />
+      : <LandingPage onGetStarted={() => setShowSignIn(true)} isDayMode={isDayMode} setIsDayMode={setIsDayMode} />
   }
 
   return (
