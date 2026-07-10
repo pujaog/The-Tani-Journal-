@@ -379,6 +379,23 @@ async function handle(request, ctx) {
       await posts.updateOne({ id: c.postId }, { $inc: { commentCount: -1 } })
       return json({ ok: true })
     }
+    if (segs[0] === 'comments' && segs[1] && (method === 'PUT' || method === 'PATCH')) {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const c = await comments.findOne({ id: segs[1] })
+      if (!c) return json({ error: 'Not found' }, 404)
+      if (c.authorUid !== authUser.uid) return json({ error: 'Forbidden' }, 403)
+      const body = await readBody(request)
+      const content = String(body.content || '').trim().slice(0, 1000)
+      if (!content) return json({ error: 'Content required' }, 400)
+      const updated = await comments.findOneAndUpdate(
+        { id: segs[1] },
+        { $set: { content, updatedAt: new Date().toISOString() } },
+        { returnDocument: 'after' }
+      )
+      const doc = updated?.value || updated
+      const author = await profiles.findOne({ uid: c.authorUid })
+      return json({ comment: { ...clean(doc), author: author ? { uid: author.uid, displayName: author.displayName, photoURL: author.photoURL } : null } })
+    }
 
     // -------- Follows --------
     if (segs[0] === 'follow' && segs[1] && method === 'POST') {
@@ -448,6 +465,24 @@ async function handle(request, ctx) {
       if (!authUser) return json({ error: 'Unauthorized' }, 401)
       await db.collection('notifications').updateMany({ userUid: authUser.uid, read: false }, { $set: { read: true } })
       return json({ ok: true })
+    }
+
+    // -------- Search --------
+    if (path === '/search' && method === 'GET') {
+      const url = new URL(request.url)
+      const q = url.searchParams.get('q') || ''
+      if (!q || q.length < 2) return json({ posts: [] })
+      const queryRegex = new RegExp(q, 'i')
+      const list = await posts.find({
+        visibility: 'public',
+        $or: [
+          { title: queryRegex },
+          { content: queryRegex },
+          { mood: queryRegex }
+        ]
+      }).sort({ createdAt: -1 }).limit(100).toArray()
+      const enriched = await attachEngagement(db, list, authUser)
+      return json({ posts: enriched })
     }
 
     // -------- Admin --------

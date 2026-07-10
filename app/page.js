@@ -100,8 +100,136 @@ function Avatar({ url, name, size = 32, online, onClick }) {
   )
 }
 
-// ---------- Landing Page ----------
+// ---------- Landing Page with Public Feed ----------
 function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
+  const [showPublicFeed, setShowPublicFeed] = useState(false)
+  const [publicPosts, setPublicPosts] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [selectedPost, setSelectedPost] = useState(null)
+  const [presence, setPresence] = useState({})
+
+  const search = async (q) => {
+    if (!q || q.length < 2) {
+      setPublicPosts([])
+      return
+    }
+    setSearching(true)
+    try {
+      const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
+      const j = await r.json()
+      setPublicPosts(j.posts || [])
+    } catch (e) { console.error(e) }
+    finally { setSearching(false) }
+  }
+
+  const loadPublicPosts = async () => {
+    setSearching(true)
+    try {
+      const r = await fetch('/api/posts?scope=community')
+      const j = await r.json()
+      setPublicPosts(j.posts || [])
+      setShowPublicFeed(true)
+    } catch (e) { console.error(e) }
+    finally { setSearching(false) }
+  }
+
+  // Poll presence for visible posts
+  useEffect(() => {
+    if (publicPosts.length === 0) return
+    const uids = [...new Set(publicPosts.map(p => p.authorUid).filter(Boolean))]
+    if (uids.length === 0) return
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/presence?uids=${uids.join(',')}`)
+        const j = await r.json()
+        setPresence(j.presence || {})
+      } catch (e) { /* ignore */ }
+    }
+    load()
+    const iv = setInterval(load, 15000)
+    return () => clearInterval(iv)
+  }, [publicPosts])
+
+  if (showPublicFeed) {
+    return (
+      <div className="min-h-screen">
+        {/* Nav */}
+        <nav className="sticky top-0 z-30 backdrop-blur-md" style={{ background: 'color-mix(in srgb, currentColor 4%, transparent)' }}>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+            <button onClick={() => setShowPublicFeed(false)} className="flex items-center gap-2.5 text-left">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'currentColor' }}>
+                <BookOpen className="w-4 h-4" style={{ color: 'var(--bg-invert, #fff)', mixBlendMode: 'difference' }} />
+              </div>
+              <div>
+                <div className="text-base font-semibold leading-tight" style={{ fontFamily: 'Fraunces, serif' }}>The Tani Journal</div>
+                <div className="text-[11px] journal-muted leading-tight">Your story, beautifully kept</div>
+              </div>
+            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setIsDayMode(!isDayMode)} className="journal-chip inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs border">
+                {isDayMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                {isDayMode ? 'Day' : 'Night'}
+              </button>
+              <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium">
+                Sign in <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        {/* Search */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex-1 relative">
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value)
+                  const q = e.target.value.trim()
+                  if (q.length >= 2) search(q)
+                }}
+                placeholder="Search posts, moods, or stories..."
+                className="journal-input w-full px-4 py-3 rounded-xl text-base border"
+              />
+              {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" />}
+            </div>
+            <button onClick={() => setShowPublicFeed(false)} className="journal-btn-ghost px-4 py-3 rounded-xl text-sm">
+              <ArrowLeft className="w-4 h-4 inline mr-2" /> Home
+            </button>
+          </div>
+
+          {/* Results */}
+          {publicPosts.length === 0 ? (
+            <div className="text-center py-16 journal-muted">
+              {searchQuery.length < 2 ? 'Enter at least 2 characters to search' : 'No posts found. Try a different search.'}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {publicPosts.map(p => (
+                <PostCard key={p.id} post={p} canEdit={false} authUser={null} presence={presence}
+                  onLike={() => onGetStarted()} onReport={() => onGetStarted()} onView={() => {}}
+                  onOpenAuthor={() => {}} onCountChange={() => {}} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <footer className="max-w-6xl mx-auto px-4 sm:px-6 py-10 border-t text-center" style={{ borderColor: 'rgba(128,128,128,0.15)' }}>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs journal-muted">
+            <div className="flex items-center gap-1.5"><Feather className="w-3 h-3" /> Written with intention · The Tani Journal</div>
+            <div className="flex items-center gap-4">
+              <button onClick={onGetStarted} className="hover:underline">Sign in</button>
+              <span>·</span>
+              <span>© {new Date().getFullYear()}</span>
+            </div>
+          </div>
+        </footer>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen fade-up">
       {/* Nav */}
@@ -148,8 +276,8 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
               <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-medium">
                 <Feather className="w-4 h-4" /> Start your journal
               </button>
-              <button onClick={onGetStarted} className="journal-chip inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm border">
-                <UserIcon className="w-4 h-4" /> I already have one
+              <button onClick={loadPublicPosts} className="journal-chip inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm border">
+                <Globe className="w-4 h-4" /> Browse community
               </button>
             </div>
             <div className="flex items-center gap-6 text-xs journal-muted">
@@ -523,6 +651,9 @@ function CommentsPanel({ post, authUser, onCountChange }) {
   const [comments, setComments] = useState(null)
   const [content, setContent] = useState('')
   const [posting, setPosting] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editContent, setEditContent] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -558,6 +689,29 @@ function CommentsPanel({ post, authUser, onCountChange }) {
     setComments(prev => (prev || []).filter(c => c.id !== id))
     onCountChange?.(-1)
   }
+  const startEdit = (c) => {
+    setEditingId(c.id)
+    setEditContent(c.content)
+  }
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditContent('')
+  }
+  const saveEdit = async (id) => {
+    const updated = editContent.trim()
+    if (!updated) return
+    setEditSaving(true)
+    try {
+      const r = await authedFetch(`/api/comments/${id}`, { method: 'PUT', body: JSON.stringify({ content: updated }) })
+      const j = await r.json()
+      if (j.comment) {
+        setComments(prev => prev.map(c => c.id === id ? j.comment : c))
+        setEditingId(null)
+        setEditContent('')
+      }
+    } catch (e) { console.error(e) }
+    finally { setEditSaving(false) }
+  }
 
   return (
     <div className="mt-4 pt-4 border-t" style={{ borderColor: 'rgba(128,128,128,0.15)' }}>
@@ -586,11 +740,34 @@ function CommentsPanel({ post, authUser, onCountChange }) {
                 <div className="flex items-center gap-2 text-xs">
                   <span className="font-medium">{c.author?.displayName || 'Someone'}</span>
                   <span className="journal-muted">{timeAgo(c.createdAt)}</span>
+                  {c.updatedAt && c.updatedAt !== c.createdAt && <span className="journal-muted text-[10px]">(edited)</span>}
                 </div>
-                <div className="text-sm mt-0.5 break-words">{c.content}</div>
+                {editingId === c.id ? (
+                  <div className="mt-2">
+                    <textarea
+                      value={editContent}
+                      onChange={e => setEditContent(e.target.value)}
+                      className="journal-input w-full px-2 py-1.5 rounded-lg text-sm resize-none"
+                      rows={3}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => saveEdit(c.id)} disabled={editSaving} className="journal-btn-primary inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs disabled:opacity-50">
+                        {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Save
+                      </button>
+                      <button onClick={cancelEdit} className="journal-btn-ghost inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs">
+                        <X className="w-3 h-3" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm mt-0.5 break-words">{c.content}</div>
+                )}
               </div>
-              {authUser && c.authorUid === authUser.uid && (
-                <button onClick={() => del(c.id)} className="journal-btn-ghost p-1 rounded-md"><Trash2 className="w-3 h-3" /></button>
+              {authUser && c.authorUid === authUser.uid && editingId !== c.id && (
+                <div className="flex gap-1">
+                  <button onClick={() => startEdit(c)} className="journal-btn-ghost p-1 rounded-md"><Pencil className="w-3 h-3" /></button>
+                  <button onClick={() => del(c.id)} className="journal-btn-ghost p-1 rounded-md"><Trash2 className="w-3 h-3" /></button>
+                </div>
               )}
             </div>
           ))}
@@ -810,6 +987,8 @@ function AuthorView({ uid, authUser, presence, onBack, onLike, onReport, onView,
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyFollow, setBusyFollow] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filteredPosts, setFilteredPosts] = useState([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -819,10 +998,24 @@ function AuthorView({ uid, authUser, presence, onBack, onLike, onReport, onView,
         authedFetch(`/api/profiles/${uid}/posts`).then(r => r.json()),
       ])
       setData(pr); setPosts(po.posts || [])
+      setFilteredPosts(po.posts || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [uid])
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) {
+      setFilteredPosts(posts)
+    } else {
+      setFilteredPosts(posts.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.content.toLowerCase().includes(q) ||
+        (p.mood && p.mood.toLowerCase().includes(q))
+      ))
+    }
+  }, [searchQuery, posts])
 
   const toggleFollow = async () => {
     setBusyFollow(true)
@@ -870,11 +1063,29 @@ function AuthorView({ uid, authUser, presence, onBack, onLike, onReport, onView,
         </div>
       </div>
 
-      {posts.length === 0 ? (
-        <div className="text-center py-16 journal-muted">No public entries yet.</div>
+      {posts.length > 0 && (
+        <div className="mb-6">
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search this author's posts..."
+            className="journal-input w-full px-4 py-2.5 rounded-xl text-sm border"
+          />
+          {searchQuery && (
+            <div className="text-xs journal-muted mt-2">
+              {filteredPosts.length} of {posts.length} {posts.length === 1 ? 'entry' : 'entries'} match your search
+            </div>
+          )}
+        </div>
+      )}
+
+      {filteredPosts.length === 0 ? (
+        <div className="text-center py-16 journal-muted">
+          {posts.length === 0 ? 'No public entries yet.' : 'No entries match your search.'}
+        </div>
       ) : (
         <div className="space-y-6">
-          {posts.map(p => (
+          {filteredPosts.map(p => (
             <PostCard key={p.id} post={p} canEdit={false} authUser={authUser} presence={presence}
               onLike={onLike} onReport={onReport} onView={onView} onCountChange={onCountChange} />
           ))}
@@ -1002,8 +1213,12 @@ function App() {
   const [isAdminUser, setIsAdminUser] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [isDayMode, setIsDayMode] = useState(true)
+  const [envMissing, setEnvMissing] = useState(null)
 
   useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.__TANI_ENV_MISSING__) setEnvMissing(window.__TANI_ENV_MISSING__)
+    } catch (e) {}
     const t = localStorage.getItem('tani-theme'); if (t) setTheme(t)
     const f = localStorage.getItem('tani-font'); if (f) setFont(f)
     const d = localStorage.getItem('tani-daymode'); if (d !== null) setIsDayMode(JSON.parse(d))
@@ -1344,6 +1559,11 @@ function App() {
           </div>
         )}
         <div className="journal-divider h-px w-full" />
+        {envMissing && (
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-2">
+            <div className="rounded-lg p-3 text-sm bg-yellow-50 text-yellow-800 border border-yellow-200">Configuration warning: missing environment variables — {envMissing.join(', ')}. See README for deployment checklist.</div>
+          </div>
+        )}
       </header>
 
       {viewingAuthor ? (
