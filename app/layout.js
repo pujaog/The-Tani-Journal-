@@ -1,5 +1,6 @@
 import './globals.css'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata = {
   title: 'The Tani Journal — Your Story, Beautifully Kept',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
