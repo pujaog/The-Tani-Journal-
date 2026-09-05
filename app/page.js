@@ -109,6 +109,10 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
   const [selectedPost, setSelectedPost] = useState(null)
   const [presence, setPresence] = useState({})
 
+  useEffect(() => {
+    loadPublicPosts(false)
+  }, [])
+
   const search = async (q) => {
     if (!q || q.length < 2) {
       setPublicPosts([])
@@ -123,13 +127,13 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
     finally { setSearching(false) }
   }
 
-  const loadPublicPosts = async () => {
+  const loadPublicPosts = async (openFeed = true) => {
     setSearching(true)
     try {
       const r = await fetch('/api/posts?scope=community')
       const j = await r.json()
       setPublicPosts(j.posts || [])
-      setShowPublicFeed(true)
+      if (openFeed) setShowPublicFeed(true)
     } catch (e) { console.error(e) }
     finally { setSearching(false) }
   }
@@ -303,6 +307,27 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
           </div>
         </div>
       </section>
+
+      {publicPosts.length > 0 && (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] journal-muted font-medium mb-2">From the community</div>
+              <h2 className="text-3xl sm:text-4xl font-semibold leading-tight" style={{ fontFamily: 'Fraunces, serif' }}>Stories shared in public.</h2>
+            </div>
+            <button onClick={() => setShowPublicFeed(true)} className="journal-btn-ghost inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs border">
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="space-y-6">
+            {publicPosts.slice(0, 3).map(p => (
+              <PostCard key={p.id} post={p} canEdit={false} authUser={null} presence={presence}
+                onLike={() => onGetStarted()} onReport={() => onGetStarted()} onView={() => {}}
+                onOpenAuthor={() => {}} onCountChange={() => {}} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
