@@ -9,6 +9,7 @@ import {
 const MONGO_URL = process.env.MONGO_URL
 const DB_NAME = process.env.DB_NAME || 'tani_journal'
 const PRESENCE_WINDOW_MS = 45 * 1000
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 
 function isAdmin(authUser) {
@@ -40,6 +41,8 @@ async function getDb() {
   db.collection('follows').createIndex({ followerUid: 1, followingUid: 1 }, { unique: true }).catch(() => {})
   db.collection('presence').createIndex({ uid: 1 }, { unique: true }).catch(() => {})
   db.collection('comments').createIndex({ postId: 1, createdAt: 1 }).catch(() => {})
+  db.collection('messages').createIndex({ recipientUid: 1, read: 1, createdAt: -1 }).catch(() => {})
+    db.collection('messages').createIndex({ senderUid: 1, recipientUid: 1, createdAt: 1 }).catch(() => {})
   db.collection('posts').createIndex({ authorUid: 1, createdAt: -1 }).catch(() => {})
   db.collection('posts').createIndex({ visibility: 1, createdAt: -1 }).catch(() => {})
   return db
@@ -72,11 +75,28 @@ async function ensureProfile(db, authUser) {
   return doc
 }
 
+function dataUrlByteLength(dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return 0
+  const comma = dataUrl.indexOf(',')
+  if (comma < 0) return 0
+  const header = dataUrl.slice(0, comma)
+  const payload = dataUrl.slice(comma + 1)
+  if (/;base64/i.test(header)) {
+    const length = payload.replace(/\s/g, '').length
+    return Math.max(0, Math.floor(length * 3 / 4) - (payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0))
+  }
+  try { return new TextEncoder().encode(decodeURIComponent(payload)).byteLength } catch { return 0 }
+}
+
+function mediaTooLarge(media) {
+  return Array.isArray(media) && media.some(item => dataUrlByteLength(item?.url) > MAX_UPLOAD_BYTES)
+}
+
 function normalizeMedia(imgs) {
   if (!Array.isArray(imgs)) return []
   return imgs.slice(0, 6).map(im => ({
     url: (im.url || '').toString(),
-    aspectRatio: im.aspectRatio === '3:4' ? '3:4' : '16:9',
+    aspectRatio: 'free',
     type: im.type === 'video' ? 'video' : 'image',
   }))
 }
@@ -119,6 +139,7 @@ async function handle(request, ctx) {
     const follows = db.collection('follows')
     const reports = db.collection('reports')
     const presence = db.collection('presence')
+    const messages = db.collection('messages')
 
     if (path === '/' || path === '/health') {
       return json({ status: 'ok', service: 'tani-journal', time: new Date().toISOString() })
@@ -141,13 +162,50 @@ async function handle(request, ctx) {
       const prof = await ensureProfile(db, authUser)
       return json({ profile: clean(prof) })
     }
+
+    // -------- Direct messages --------
+    if (path === '/messages' && method === 'GET') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const recipientUid = String(new URL(request.url).searchParams.get('with') || '').trim()
+      if (!recipientUid || recipientUid === authUser.uid) return json({ messages: [] })
+      const conversation = {
+        $or: [
+          { senderUid: authUser.uid, recipientUid },
+          { senderUid: recipientUid, recipientUid: authUser.uid },
+        ],
+      }
+      const items = await messages.find(conversation).sort({ createdAt: 1 }).limit(200).toArray()
+      return json({ messages: items.map(clean) })
+    }
+    if (path === '/messages' && method === 'POST') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const body = await readBody(request)
+      const recipientUid = String(body.recipientUid || '').trim()
+      const content = String(body.content || '').trim().slice(0, 2000)
+      if (!recipientUid || recipientUid === authUser.uid) return json({ error: 'A valid recipient is required' }, 400)
+      if (!content) return json({ error: 'Message cannot be empty' }, 400)
+      const recipient = await profiles.findOne({ uid: recipientUid }, { projection: { uid: 1 } })
+      if (!recipient) return json({ error: 'Recipient not found' }, 404)
+      const doc = {
+        id: uuidv4(),
+        senderUid: authUser.uid,
+        recipientUid,
+        content,
+        createdAt: new Date().toISOString(),
+      }
+      await messages.insertOne(doc)
+      return json({ message: clean(doc) }, 201)
+    }
     if (path === '/me' && (method === 'PATCH' || method === 'PUT')) {
       if (!authUser) return json({ error: 'Unauthorized' }, 401)
       await ensureProfile(db, authUser)
       const body = await readBody(request)
       const update = { updatedAt: new Date().toISOString() }
       if (body.displayName !== undefined) update.displayName = String(body.displayName).slice(0, 60)
-      if (body.photoURL !== undefined) update.photoURL = body.photoURL ? String(body.photoURL) : null
+      if (body.photoURL !== undefined) {
+        if (dataUrlByteLength(body.photoURL) > MAX_UPLOAD_BYTES) return json({ error: 'Each uploaded file must be 500 MB or smaller' }, 413)
+        update.photoURL = body.photoURL ? String(body.photoURL) : null
+      }
       if (body.bio !== undefined) update.bio = String(body.bio).slice(0, 280)
       const res = await profiles.findOneAndUpdate({ uid: authUser.uid }, { $set: update }, { returnDocument: 'after' })
       const doc = res?.value || res
@@ -201,6 +259,7 @@ async function handle(request, ctx) {
       if (!authUser) return json({ error: 'Unauthorized' }, 401)
       await ensureProfile(db, authUser)
       const body = await readBody(request)
+      if (mediaTooLarge(body.images)) return json({ error: 'Each image or video must be 500 MB or smaller' }, 413)
       const now = new Date().toISOString()
       const doc = {
         id: uuidv4(),
@@ -247,7 +306,10 @@ async function handle(request, ctx) {
           if (body.title !== undefined) update.title = String(body.title).slice(0, 200)
           if (body.content !== undefined) update.content = String(body.content)
           if (body.mood !== undefined) update.mood = String(body.mood).slice(0, 40)
-          if (Array.isArray(body.images)) update.images = normalizeMedia(body.images)
+          if (Array.isArray(body.images)) {
+            if (mediaTooLarge(body.images)) return json({ error: 'Each image or video must be 500 MB or smaller' }, 413)
+            update.images = normalizeMedia(body.images)
+          }
           if (body.visibility !== undefined) update.visibility = body.visibility === 'public' ? 'public' : 'private'
           const res = await posts.findOneAndUpdate({ id }, { $set: update }, { returnDocument: 'after' })
           const doc = res?.value || res
@@ -467,6 +529,49 @@ async function handle(request, ctx) {
       return json({ ok: true })
     }
 
+    // -------- Direct messages --------
+    if (path === '/messages' && method === 'GET') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const url = new URL(request.url)
+      const withUid = url.searchParams.get('with') || ''
+      if (!withUid || withUid === authUser.uid) return json({ messages: [] })
+      const list = await db.collection('messages').find({
+        $or: [
+          { senderUid: authUser.uid, recipientUid: withUid },
+          { senderUid: withUid, recipientUid: authUser.uid },
+        ],
+      }).sort({ createdAt: 1 }).limit(200).toArray()
+      await db.collection('messages').updateMany(
+        { senderUid: withUid, recipientUid: authUser.uid, read: false },
+        { $set: { read: true } }
+      )
+      return json({ messages: list.map(clean) })
+    }
+    if (path === '/messages' && method === 'POST') {
+      if (!authUser) return json({ error: 'Unauthorized' }, 401)
+      const body = await readBody(request)
+      const recipientUid = String(body.recipientUid || '').trim()
+      const content = String(body.content || '').trim().slice(0, 2000)
+      if (!recipientUid || recipientUid === authUser.uid) return json({ error: 'A different recipient is required' }, 400)
+      if (!content) return json({ error: 'Message content required' }, 400)
+      const recipient = await profiles.findOne({ uid: recipientUid }, { projection: { uid: 1 } })
+      if (!recipient) return json({ error: 'Recipient not found' }, 404)
+      const doc = {
+        id: uuidv4(),
+        senderUid: authUser.uid,
+        recipientUid,
+        content,
+        read: false,
+        createdAt: new Date().toISOString(),
+      }
+      await db.collection('messages').insertOne(doc)
+      createNotification(db, {
+        userUid: recipientUid, actorUid: authUser.uid, type: 'message',
+        meta: { snippet: content.slice(0, 100) },
+      }).catch(() => {})
+      return json({ message: clean(doc) }, 201)
+    }
+
     // -------- Search --------
     if (path === '/search' && method === 'GET') {
       const url = new URL(request.url)
@@ -535,6 +640,7 @@ async function handle(request, ctx) {
     if (path === '/upload' && method === 'POST') {
       const body = await readBody(request)
       if (!body.dataUrl) return json({ error: 'dataUrl required' }, 400)
+      if (dataUrlByteLength(body.dataUrl) > MAX_UPLOAD_BYTES) return json({ error: 'Each uploaded file must be 500 MB or smaller' }, 413)
       return json({ url: body.dataUrl })
     }
 
