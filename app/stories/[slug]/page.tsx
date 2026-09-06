@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function StoryPage({ params }: { params: { slug: string } }) {
-  const post = await prisma.post.findUnique({ where: { slug: params.slug }, include: { author: { select: { name: true, encryptedDriveAuth: true } } } })
+  const post = await prisma.post.findUnique({ where: { slug: params.slug }, include: { author: { select: { id: true, name: true, encryptedDriveAuth: true } } } })
   if (!post || post.status !== 'PUBLISHED') notFound()
   const encrypted = post.author.encryptedDriveAuth as { accessToken?: string } | null
   if (!encrypted?.accessToken) notFound()
