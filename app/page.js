@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import {
   BookOpen, Plus, Image as ImageIcon, X, Pencil, Trash2, Palette,
   Calendar, Heart, ChevronDown, Sparkles, Feather, Coffee, Moon,
@@ -12,6 +13,8 @@ import {
   auth, onAuthStateChanged, signInWithGoogle, signInEmail, signUpEmail, signOut, authedFetch,
   completeRedirectSignIn, connectDrive, disconnectDrive, isDriveConnected, resetPassword
 } from '@/lib/firebase'
+
+const TaniHero = dynamic(() => import('@/components/tani-hero').then((module) => module.TaniHero), { ssr: false })
 
 const THEMES = [
   { id: 'paper',    name: 'Paper',    icon: Sun,   swatch: 'linear-gradient(135deg, #faf7f2 0%, #efe8d8 100%)' },
@@ -271,53 +274,7 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode, envMissing }) {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-16 sm:pb-24">
-        <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 items-center">
-          <div className="lg:col-span-3 fade-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] uppercase tracking-widest journal-chip mb-6">
-              <Sparkles className="w-3 h-3" /> A quiet place to write
-            </div>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl leading-[1.05] font-semibold mb-6 tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
-              Your story,<br /><em className="italic journal-muted">beautifully</em> kept.
-            </h1>
-            <p className="journal-muted text-lg sm:text-xl max-w-xl mb-8 leading-relaxed">
-              A media-rich journal that respects your moments. Write with intention, add the photograph, choose the mood — and let a beautiful timeline hold it all.
-            </p>
-            <p className="journal-muted text-lg sm:text-xl max-w-xl mb-10 leading-relaxed font-semibold">
-              Write what you cannot say aloud.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 mb-10">
-              <button onClick={onGetStarted} className="journal-btn-primary inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-medium">
-                <Feather className="w-4 h-4" /> Start your journal
-              </button>
-              <button onClick={loadPublicPosts} className="journal-chip inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm border">
-                <Globe className="w-4 h-4" /> Browse community
-              </button>
-            </div>
-            <div className="flex items-center gap-6 text-xs journal-muted">
-              <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Private by default</div>
-              <div className="flex items-center gap-1.5"><Cloud className="w-3.5 h-3.5" /> Optional Drive backup</div>
-              <div className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" /> Free forever</div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-2 relative">
-            {/* Hero image stack */}
-            <div className="relative aspect-[3/4] max-w-md mx-auto">
-              <div className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl rotate-[2deg]" style={{ transform: 'rotate(3deg)' }}>
-                <img src="https://images.unsplash.com/photo-1569360556894-15dca0c6ff1a" alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute -bottom-6 -left-6 w-40 h-52 rounded-2xl overflow-hidden shadow-xl border-4 rotate-[-6deg]" style={{ borderColor: 'var(--card, #fff)' }}>
-                <img src="https://images.pexels.com/photos/17301678/pexels-photo-17301678.jpeg" alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute -top-4 -right-4 w-32 h-32 rounded-2xl overflow-hidden shadow-xl border-4 rotate-[8deg]" style={{ borderColor: 'var(--card, #fff)' }}>
-                <img src="https://images.pexels.com/photos/15558300/pexels-photo-15558300.jpeg" alt="" className="w-full h-full object-cover" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <TaniHero onStart={onGetStarted} onExplore={loadPublicPosts} />
 
       {publicPosts.length > 0 && (
         <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
