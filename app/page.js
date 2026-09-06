@@ -101,7 +101,17 @@ function Avatar({ url, name, size = 32, online, onClick }) {
 }
 
 // ---------- Landing Page with Public Feed ----------
-function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
+function ConfigurationNotice({ envMissing }) {
+  if (!envMissing?.length) return null
+  return (
+    <div className="config-notice max-w-6xl mx-auto mt-4 mx-4 sm:mx-auto px-4 py-3 rounded-xl text-xs flex items-start gap-2">
+      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+      <span><strong>Firebase needs configuration.</strong> Add {envMissing.join(', ')} in Vercel Environment Variables, then redeploy. Browsing remains available while sign-in is offline.</span>
+    </div>
+  )
+}
+
+function LandingPage({ onGetStarted, isDayMode, setIsDayMode, envMissing }) {
   const [showPublicFeed, setShowPublicFeed] = useState(false)
   const [publicPosts, setPublicPosts] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -235,7 +245,8 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
   }
 
   return (
-    <div className="min-h-screen fade-up">
+    <div className="landing-page min-h-screen fade-up">
+      <ConfigurationNotice envMissing={envMissing} />
       {/* Nav */}
       <nav className="sticky top-0 z-30 backdrop-blur-md" style={{ background: 'color-mix(in srgb, currentColor 4%, transparent)' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
@@ -429,7 +440,7 @@ function LandingPage({ onGetStarted, isDayMode, setIsDayMode }) {
 }
 
 // ---------- Sign In ----------
-function SignInScreen({ onBack }) {
+function SignInScreen({ onBack, envMissing }) {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -467,6 +478,7 @@ function SignInScreen({ onBack }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md fade-up">
+      <ConfigurationNotice envMissing={envMissing} />
         {onBack && (
           <button onClick={onBack} className="journal-btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs mb-4">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to home
@@ -1584,8 +1596,8 @@ function App() {
   if (authUser === undefined) return <div className="min-h-screen flex items-center justify-center journal-muted"><Loader2 className="w-5 h-5 animate-spin" /></div>
   if (!authUser) {
     return showSignIn
-      ? <SignInScreen onBack={() => setShowSignIn(false)} />
-      : <LandingPage onGetStarted={() => setShowSignIn(true)} isDayMode={isDayMode} setIsDayMode={setIsDayMode} />
+      ? <SignInScreen onBack={() => setShowSignIn(false)} envMissing={envMissing} />
+      : <LandingPage onGetStarted={() => setShowSignIn(true)} isDayMode={isDayMode} setIsDayMode={setIsDayMode} envMissing={envMissing} />
   }
 
   return (
